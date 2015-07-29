@@ -514,6 +514,26 @@ class Client(object):
             self._wizard_create = authenticated(self._wizard.create)
         return uid
 
+    def with_session(self, user, password, uid, database):
+        # Authenticated endpoints
+        def authenticated(method):
+            return functools.partial(method, self._db, uid, password)
+        self.reset()
+        self._db = database
+        self.user = user
+        self._execute = authenticated(self._object.execute)
+        self._exec_workflow = authenticated(self._object.exec_workflow)
+        self.report = authenticated(self._report.report)
+        self.report_get = authenticated(self._report.report_get)
+        if self.major_version != '5.0':
+            # Only for Odoo and OpenERP >= 6
+            self.execute_kw = authenticated(self._object.execute_kw)
+            self.render_report = authenticated(self._report.render_report)
+        if self._wizard:
+            self._wizard_execute = authenticated(self._wizard.execute)
+            self._wizard_create = authenticated(self._wizard.create)
+        return True
+
     # Needed for interactive use
     connect = None
     _login = login
