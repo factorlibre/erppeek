@@ -32,6 +32,11 @@ If our configuration is different, then we use arguments, like::
 
     $ erppeek --server http://192.168.0.42:8069
 
+It connects using the XML-RPC protocol. If you want to use the JSON-RPC
+protocol instead, then pass the full URL with ``/jsonrpc`` path::
+
+    $ erppeek --server http://127.0.0.1:8069/jsonrpc
+
 
 On login, it prints few lines about the commands available.
 
@@ -65,12 +70,12 @@ wrappers.
 And it confirms that the default database is not available::
 
     ...
-    Error: Database 'openerp' does not exist: []
+    Error: Database 'odoo' does not exist: []
 
 Though, we have a connected client, ready to use::
 
     >>> client
-    <Client 'http://localhost:8069#()'>
+    <Client 'http://localhost:8069/xmlrpc#()'>
     >>> client.server_version
     '6.1'
     >>> #
@@ -81,7 +86,7 @@ Create a database
 
 We create the database ``"demo"`` for this tutorial.
 We need to know the superadmin password before to continue.
-This is the ``admin_passwd`` in the ``openerp-server.conf`` file.
+This is the ``admin_passwd`` in the ``odoo-server.conf`` file.
 Default password is ``"admin"``.
 
 .. note:: This password gives full control on the databases. Set a strong
@@ -93,7 +98,7 @@ Default password is ``"admin"``.
     >>> client.create_database('super_password', 'demo')
     Logged in as 'admin'
     >>> client
-    <Client 'http://localhost:8069#demo'>
+    <Client 'http://localhost:8069/xmlrpc#demo'>
     >>> client.db.list()
     ['demo']
     >>> client.user
@@ -121,6 +126,31 @@ Default password is ``"admin"``.
    during an interactive session with ``client.connect('demo')``.
 
 
+Clone a database
+----------------
+
+It is sometimes useful to clone a database (testing, backup, migration, ...).
+A shortcut is available for that, the required parameters are the new
+database name and the superadmin password.
+
+
+.. sourcecode:: pycon
+
+    >>> client.clone_database('super_password', 'demo_test')
+    Logged in as 'admin'
+    >>> client
+    <Client 'http://localhost:8069/xmlrpc#demo_test'>
+    >>> client.db.list()
+    ['demo', 'demo_test']
+    >>> client.user
+    'admin'
+    >>> client.modules(installed=True)
+    {'installed': ['base', 'web', 'web_mobile', 'web_tests']}
+    >>> len(client.modules()['uninstalled'])
+    202
+    >>> #
+
+
 Find the users
 --------------
 
@@ -132,7 +162,7 @@ Where is the table for the users?
 .. sourcecode:: pycon
 
     >>> client
-    <Client 'http://localhost:8069#demo'>
+    <Client 'http://localhost:8069/xmlrpc#demo'>
     >>> models('user')
     {'ResUsers': <Model 'res.users'>, 'ResWidgetUser': <Model 'res.widget.user'>}
 
@@ -318,13 +348,14 @@ Among these 92 objects, some of them are ``read-only``, others are
        1  <Model 'res.widget.user'>
     >>> #
     >>> # Show the content of a model
-    >>> config_params = model('ir.config_parameter').browse([])
+    >>> config_params = model('ir.config_parameter').browse([], limit=None)
     >>> config_params.read()
     [{'id': 1, 'key': 'web.base.url', 'value': 'http://localhost:8069'},
      {'id': 2, 'key': 'database.create_date', 'value': '2012-09-01 09:01:12'},
      {'id': 3,
       'key': 'database.uuid',
       'value': '52fc9630-f49e-2222-e622-08002763afeb'}]
+
 
 Browse the records
 ------------------

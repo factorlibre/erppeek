@@ -68,13 +68,13 @@ class TestInteract(XmlRpcTestCase):
         outlines = self.stdout.popvalue().splitlines()
         self.assertSequenceEqual(outlines[-5:], [
             "Logged in as 'usr'",
-            "<Client 'http://127.0.0.1:8069#database'>",
+            "<Client 'http://127.0.0.1:8069/xmlrpc#database'>",
             "<bound method Client.model of "
-            "<Client 'http://127.0.0.1:8069#database'>>",
+            "<Client 'http://127.0.0.1:8069/xmlrpc#database'>>",
             "Logged in as 'gaspard'",
             "42",
         ])
-        self.assertOutput(stderr='\x1b[A\n\n')
+        self.assertOutput(stderr='\x1b[A\n\n', startswith=True)
 
     def test_no_database(self):
         env_tuple = ('http://127.0.0.1:8069', 'missingdb', 'usr', None)
@@ -97,7 +97,7 @@ class TestInteract(XmlRpcTestCase):
         outlines = self.stdout.popvalue().splitlines()
         self.assertSequenceEqual(outlines[-3:], [
             "Error: Database 'missingdb' does not exist: ['database']",
-            "<Client 'http://127.0.0.1:8069#()'>",
+            "<Client 'http://127.0.0.1:8069/xmlrpc#()'>",
             "Error: Not connected",
         ])
         self.assertOutput(stderr=ANY)

@@ -12,6 +12,8 @@ Download and install the latest release::
 
 Documentation and tutorial: http://erppeek.readthedocs.org
 
+CI tests: https://travis-ci.org/tinyerp/erppeek
+
 
 Overview
 --------
@@ -28,9 +30,9 @@ Key features:
 - single executable ``erppeek.py``, no external dependency
 - wrappers for ``search+read``, for data model introspection, etc...
 - simpler syntax for ``domain`` and ``fields``
-- full API accessible on the ``Client`` object for OpenERP 5.0 through Odoo 8.0
+- full API accessible on the ``Client`` object for OpenERP 5.0 through Odoo 11.0
 - the module can be imported and used as a library: ``from erppeek import Client``
-- supports Python 3 and Python 2 (>= 2.6)
+- supports Python 3 and Python 2.7
 
 
 
@@ -55,7 +57,7 @@ Although it is quite limited::
       --env=ENV             read connection settings from the given section
       -c CONFIG, --config=CONFIG
                             specify alternate config file (default: 'erppeek.ini')
-      --server=SERVER       full URL to the XML-RPC server (default: http://localhost:8069)
+      --server=SERVER       full URL of the server (default: http://localhost:8069/xmlrpc)
       -d DB, --db=DB        database
       -u USER, --user=USER  username
       -p PASSWORD, --password=PASSWORD
@@ -102,16 +104,22 @@ Edit ``erppeek.ini`` and declare the environment(s)::
     scheme = http
     host = localhost
     port = 8069
-    database = openerp
+    database = odoo
     username = admin
-    options = -c /path/to/openerp-server.conf --without-demo all
 
     [demo]
     username = demo
     password = demo
+    protocol = xmlrpc
+
+    [demo_jsonrpc]
+    username = demo
+    password = demo
+    protocol = jsonrpc
 
     [local]
     scheme = local
+    options = -c /path/to/odoo-server.conf --without-demo all
 
 
 Connect to the Odoo server::

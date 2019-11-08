@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-from mock import sentinel, ANY
+from mock import patch, sentinel, ANY
 
 import erppeek
 from ._common import XmlRpcTestCase, OBJ, callable
+
+PY2 = ('' == ''.encode())
 
 
 class TestCase(XmlRpcTestCase):
@@ -69,9 +71,12 @@ class TestCase(XmlRpcTestCase):
             fields['many_ids'] = {'type': 'many2many', 'relation': 'foo.many'}
             return fields
         if method == 'name_get':
-            if 404 in args[5]:
+            ids = list(args[5])
+            if 404 in ids:
                 1 / 0
-            return [(res_id, 'name_%s' % res_id) for res_id in args[5]]
+            if 8888 in ids:
+                ids[ids.index(8888)] = b'\xdan\xeecode'.decode('latin-1')
+            return [(res_id, b'name_%s'.decode() % res_id) for res_id in ids]
         if method in ('create', 'copy'):
             return 1999
         return [sentinel.OTHER]
@@ -154,9 +159,9 @@ class TestModel(TestCase):
         domain2 = [('name', '=', 'mushroom'), ('state', '!=', 'draft')]
         self.assertCalls(
             OBJ('foo.bar', 'search', domain),
-            OBJ('foo.bar', 'search', domain, 0, 2, None, None),
-            OBJ('foo.bar', 'search', domain, 80, 99, None, None),
-            OBJ('foo.bar', 'search', domain, 0, None, 'name ASC', None),
+            OBJ('foo.bar', 'search', domain, 0, 2, None),
+            OBJ('foo.bar', 'search', domain, 80, 99, None),
+            OBJ('foo.bar', 'search', domain, 0, None, 'name ASC'),
             OBJ('foo.bar', 'search', domain2),
             OBJ('foo.bar', 'search', domain),
             OBJ('foo.bar', 'search', domain),
@@ -170,7 +175,7 @@ class TestModel(TestCase):
         self.assertCalls(OBJ('foo.bar', 'search', 'name like Morice'))
 
         FooBar.search(['name like Morice'], missingkey=42)
-        self.assertCalls(OBJ('foo.bar', 'search', domain, 0, None, None, None))
+        self.assertCalls(OBJ('foo.bar', 'search', domain))
         self.assertOutput('Ignoring: missingkey = 42\n')
 
         self.assertRaises(ValueError, FooBar.search, ['abc'])
@@ -258,23 +263,30 @@ class TestModel(TestCase):
         domain2 = [('name', '=', 'mushroom'), ('state', '!=', 'draft')]
         self.assertCalls(
             OBJ('foo.bar', 'search', domain), call_read(),
-            OBJ('foo.bar', 'search', domain, 0, 2, None, None), call_read(),
-            OBJ('foo.bar', 'search', domain, 80, 99, None, None), call_read(),
-            OBJ('foo.bar', 'search', domain, 0, None, 'name ASC', None),
+            OBJ('foo.bar', 'search', domain, 0, 2, None), call_read(),
+            OBJ('foo.bar', 'search', domain, 80, 99, None), call_read(),
+            OBJ('foo.bar', 'search', domain, 0, None, 'name ASC'),
             call_read(),
             OBJ('foo.bar', 'search', domain), call_read(['birthdate', 'city']),
-            OBJ('foo.bar', 'search', domain, 0, 2, None, None),
+            OBJ('foo.bar', 'search', domain, 0, 2, None),
             call_read(['birthdate', 'city']),
-            OBJ('foo.bar', 'search', domain, 0, 2, None, None),
+            OBJ('foo.bar', 'search', domain, 0, 2, None),
             call_read(['birthdate', 'city']),
-            OBJ('foo.bar', 'search', domain, 0, None, 'name ASC', None),
+            OBJ('foo.bar', 'search', domain, 0, None, 'name ASC'),
             call_read(),
             OBJ('foo.bar', 'search', domain2), call_read(),
             OBJ('foo.bar', 'search', domain), call_read(),
             OBJ('foo.bar', 'search', domain), call_read(),
-            OBJ('foo.bar', 'search', domain, 80, 99, None, None),
+            OBJ('foo.bar', 'search', domain, 80, 99, None),
             call_read(['birthdate', 'city']),
         )
+        self.assertOutput('')
+
+        self.assertEqual(FooBar.read([]), False)
+        self.assertEqual(FooBar.read([], order='name ASC'), False)
+        self.assertEqual(FooBar.read([False]), [])
+        self.assertEqual(FooBar.read([False, False]), [])
+        self.assertCalls()
         self.assertOutput('')
 
         # No longer supported since 1.6
@@ -282,8 +294,7 @@ class TestModel(TestCase):
         self.assertCalls(OBJ('foo.bar', 'read', [searchterm], None))
 
         FooBar.read([searchterm], missingkey=42)
-        self.assertCalls(OBJ('foo.bar', 'search', domain, 0, None, None, None),
-                         call_read())
+        self.assertCalls(OBJ('foo.bar', 'search', domain), call_read())
         self.assertOutput('Ignoring: missingkey = 42\n')
 
         self.assertRaises(AssertionError, FooBar.read)
@@ -317,11 +328,11 @@ class TestModel(TestCase):
         domain2 = [('name', '=', 'mushroom'), ('state', '!=', 'draft')]
         self.assertCalls(
             OBJ('foo.bar', 'search', domain),
-            OBJ('foo.bar', 'search', domain, 0, 2, None, None),
-            OBJ('foo.bar', 'search', domain, 80, 99, None, None),
-            OBJ('foo.bar', 'search', domain, 0, None, 'name ASC', None),
-            OBJ('foo.bar', 'search', domain, 0, 2, None, None),
-            OBJ('foo.bar', 'search', domain, 0, None, 'name ASC', None),
+            OBJ('foo.bar', 'search', domain, 0, 2, None),
+            OBJ('foo.bar', 'search', domain, 80, 99, None),
+            OBJ('foo.bar', 'search', domain, 0, None, 'name ASC'),
+            OBJ('foo.bar', 'search', domain, 0, 2, None),
+            OBJ('foo.bar', 'search', domain, 0, None, 'name ASC'),
             OBJ('foo.bar', 'search', domain2),
             OBJ('foo.bar', 'search', domain),
         )
@@ -333,8 +344,8 @@ class TestModel(TestCase):
         FooBar.browse([searchterm], limit=2, fields=['birthdate', 'city'])
         FooBar.browse([searchterm], missingkey=42)
         self.assertCalls(
-            OBJ('foo.bar', 'search', domain, 0, 2, None, None),
-            OBJ('foo.bar', 'search', domain, 0, None, None, None))
+            OBJ('foo.bar', 'search', domain, 0, 2, None),
+            OBJ('foo.bar', 'search', domain))
         self.assertOutput("Ignoring: fields = ['birthdate', 'city']\n"
                           "Ignoring: missingkey = 42\n")
 
@@ -346,7 +357,47 @@ class TestModel(TestCase):
         self.assertCalls()
         self.assertOutput('')
 
+    def test_browse_empty(self):
+        OBJ = self.get_OBJ()
+        FooBar = self.model('foo.bar')
+
+        with patch('erppeek.Model._browse_compat', True):
+            records = FooBar.browse([])
+            self.assertIsInstance(records, erppeek.RecordList)
+            self.assertTrue(records)
+
+            records = FooBar.browse([], context={'lang': 'fr_CA'})
+            self.assertIsInstance(records, erppeek.RecordList)
+            self.assertTrue(records)
+
+        self.assertFalse(erppeek.Model._browse_compat)
+
+        records = FooBar.browse([])
+        self.assertIsInstance(records, erppeek.RecordList)
+        self.assertFalse(records)
+
+        records = FooBar.browse([], limit=12)
+        self.assertIsInstance(records, erppeek.RecordList)
+        self.assertTrue(records)
+
+        records = FooBar.browse([], context={'lang': 'fr_CA'})
+        self.assertIsInstance(records, erppeek.RecordList)
+        self.assertFalse(records)
+
+        records = FooBar.browse([], limit=None)
+        self.assertIsInstance(records, erppeek.RecordList)
+        self.assertTrue(records)
+
+        self.assertCalls(
+            OBJ('foo.bar', 'search', []),
+            OBJ('foo.bar', 'search', [], 0, None, None, False, {'lang': 'fr_CA'}),
+            OBJ('foo.bar', 'search', [], 0, 12, None),
+            OBJ('foo.bar', 'search', []),
+        )
+        self.assertOutput('')
+
     def test_get(self):
+        OBJ = self.get_OBJ()
         FooBar = self.model('foo.bar')
 
         self.assertIsInstance(FooBar.get(42), erppeek.Record)
@@ -377,11 +428,11 @@ class TestModel(TestCase):
             OBJ('foo.bar', 'search', [('name', '=', 'Morice')]),
             OBJ('foo.bar', 'search', [('name', '=', 'Blinky'), ('missing', '=', False)]),
             OBJ('foo.bar', 'search', [('name', 'like', 'Morice')]),
-            OBJ('foo.bar', 'search', [('name', '=', 'Morice')], 0, None, None, {'lang': 'fr_FR'}),
+            OBJ('foo.bar', 'search', [('name', '=', 'Morice')], 0, None, None, False, {'lang': 'fr_FR'}),
             OBJ('foo.bar', 'fields_get_keys'),
             OBJ('foo.bar', 'read', [1003], ['name'], {'lang': 'fr_FR'}),
             OBJ('foo.bar', 'fields_get'),
-            OBJ('foo.bar', 'search', [('name', '=', 'Morice')], 0, None, None, ctx),
+            OBJ('foo.bar', 'search', [('name', '=', 'Morice')], 0, None, None, False, ctx),
             OBJ('foo.bar', 'read', [1003], ['name'], ctx),
         )
         self.assertOutput('')
@@ -809,7 +860,11 @@ class TestRecord(TestCase):
         rec2 = self.model('foo.bar').get(42)
         rec3 = self.model('foo.bar').get(2)
         rec4 = self.model('foo.other').get(42)
-        records = self.model('foo.bar').browse([42])
+        records1 = self.model('foo.bar').browse([42])
+        records2 = self.model('foo.bar').browse([2, 4])
+        records3 = self.model('foo.bar').browse([2, 4])
+        records4 = self.model('foo.bar').browse([4, 2])
+        records5 = self.model('foo.other').browse([2, 4])
 
         self.assertEqual(rec1.id, rec2.id)
         self.assertEqual(rec1, rec2)
@@ -819,8 +874,11 @@ class TestRecord(TestCase):
         self.assertNotEqual(rec1, rec3)
         self.assertNotEqual(rec1, rec4)
 
-        self.assertEqual(records.id, [42])
-        self.assertNotEqual(rec1, records)
+        self.assertEqual(records1.id, [42])
+        self.assertNotEqual(rec1, records1)
+        self.assertEqual(records2, records3)
+        self.assertNotEqual(records2, records4)
+        self.assertNotEqual(records2, records5)
 
         # if client is different, records do not compare equal
         rec2.__dict__['_model'] = sentinel.OTHER_MODEL
@@ -918,6 +976,22 @@ class TestRecord(TestCase):
         self.assertCalls()
         self.assertOutput('')
 
+    def test_str_unicode(self):
+        rec4 = self.model('foo.bar').browse(8888)
+        expected_str = expected_unicode = 'name_\xdan\xeecode'
+        if PY2:
+            expected_unicode = expected_str.decode('latin-1')
+            expected_str = expected_unicode.encode('ascii', 'backslashreplace')
+            self.assertEqual(unicode(rec4), expected_unicode)
+        self.assertEqual(str(rec4), expected_str)
+        self.assertEqual(rec4._name, expected_unicode)
+        self.assertEqual(repr(rec4), "<Record 'foo.bar,8888'>")
+
+        self.assertCalls(
+            OBJ('foo.bar', 'fields_get_keys'),
+            OBJ('foo.bar', 'name_get', [8888]),
+        )
+
     def test_external_id(self):
         records = self.model('foo.bar').browse([13, 17])
         rec = self.model('foo.bar').browse(42)
@@ -973,3 +1047,19 @@ class TestRecord(TestCase):
             OBJ('ir.model.data', 'create', ANY),
         )
         self.assertOutput('')
+
+
+class TestModel90(TestModel):
+    server_version = '9.0'
+
+
+class TestRecord90(TestRecord):
+    server_version = '9.0'
+
+
+class TestModel11(TestModel):
+    server_version = '11.0'
+
+
+class TestRecord11(TestRecord):
+    server_version = '11.0'

@@ -31,6 +31,14 @@ def OBJ(*args):
     return ('object.execute', sentinel.AUTH) + args
 
 
+def OBJ_v9(*args):
+    if len(args) == 8 and args[1] == 'search':
+        args = args[:6] + args[7:5:-1]
+        if not args[-1]:
+            args = args[:-1]
+    return OBJ(*args)
+
+
 class XmlRpcTestCase(unittest2.TestCase):
     server_version = None
     server = None
@@ -44,6 +52,9 @@ class XmlRpcTestCase(unittest2.TestCase):
 
         # Clear the login cache
         mock.patch.dict('erppeek.Client._login.cache', clear=True).start()
+
+        # Avoid hanging on getpass
+        mock.patch('getpass.getpass', side_effect=RuntimeError).start()
 
         self.service = self._patch_service()
         if self.server and self.database:
@@ -67,6 +78,10 @@ class XmlRpcTestCase(unittest2.TestCase):
         svcs.common.login.return_value = self.uid
         return svcs
 
+    def get_OBJ(self):
+        self.assertTrue(self.server_version)
+        return OBJ if (float(self.server_version) >= 10.0) else OBJ_v9
+
     def assertCalls(self, *expected_args):
         expected_calls = []
         for expected in expected_args:
@@ -89,13 +104,19 @@ class XmlRpcTestCase(unittest2.TestCase):
         # Reset
         self.service.reset_mock()
 
-    def assertOutput(self, stdout='', stderr=''):
+    def assertOutput(self, stdout='', stderr='', startswith=False):
         # compare with ANY to make sure output is not empty
         if stderr is mock.ANY:
             self.assertTrue(self.stderr.popvalue())
         else:
-            self.assertMultiLineEqual(self.stderr.popvalue(), stderr)
+            stderr_value = self.stderr.popvalue()
+            if startswith and stderr:
+                stderr_value = stderr_value[:len(stderr)]
+            self.assertMultiLineEqual(stderr_value, stderr)
         if stdout is mock.ANY:
             self.assertTrue(self.stdout.popvalue())
         else:
-            self.assertMultiLineEqual(self.stdout.popvalue(), stdout)
+            stdout_value = self.stdout.popvalue()
+            if startswith and stdout:
+                stdout_value = stdout_value[:len(stdout)]
+            self.assertMultiLineEqual(stdout_value, stdout)

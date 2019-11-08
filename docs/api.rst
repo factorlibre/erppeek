@@ -5,7 +5,7 @@ ERPpeek API
 .. module:: erppeek
 
 The library provides few objects to access the OpenObject model and the
-associated services provided by `the Odoo XML-RPC API`_.
+associated services of `the Odoo API`_.
 
 The signature of the methods mimics the standard methods provided by the
 :class:`osv.Model` Odoo class.  This is intended to help the developer when
@@ -21,7 +21,7 @@ be portable in the application with little effort.
 Client and Services
 -------------------
 
-The :class:`Client` object provides thin wrappers around XML-RPC services
+The :class:`Client` object provides thin wrappers around Odoo RPC services
 and their methods.  Additional helpers are provided to explore the models and
 list or install Odoo add-ons.
 
@@ -31,6 +31,8 @@ list or install Odoo add-ons.
 .. automethod:: Client.from_config
 
 .. automethod:: Client.create_database
+
+.. automethod:: Client.clone_database
 
 .. automethod:: Client.login
 
@@ -93,8 +95,8 @@ Objects
     * ``create_date``: date when the record was created
     * ``write_uid``: last user who changed the record
     * ``write_date``: date of the last change to the record
-    * ``xmlid``: XML ID to use to refer to this record (if there is one), in
-      format ``module.name`` (not available with OpenERP 5)
+    * ``xmlid``: External ID to use to refer to this record (if there is one),
+      in format ``module.name`` (not available with OpenERP 5)
 
    If `details` is True, the ``create_uid`` and ``write_uid`` contain the
    name of the user.
@@ -154,29 +156,38 @@ Please refer to `the Odoo documentation`_ for details.
 
    Wrapper around ``report.report`` RPC method.
 
+   Removed in Odoo 11.
+
 .. method:: Client.render_report(obj, ids, datas=None, context=None)
 
    Wrapper around ``report.render_report`` RPC method.
 
    Does not exist if server is OpenERP 5.
 
+   Removed in Odoo 11.
+
 .. method:: Client.report_get(report_id)
 
    Wrapper around ``report.report_get`` RPC method.
 
+   Removed in Odoo 11.
+
 .. automethod:: Client.wizard
 
+   Removed in OpenERP 7.
 
-XML-RPC Services
-~~~~~~~~~~~~~~~~
 
-The nake XML-RPC services are exposed too.  There are five services.
+Odoo RPC Services
+~~~~~~~~~~~~~~~~~
+
+The nake Odoo services are exposed too.
 The :attr:`~Client.db` and the :attr:`~Client.common` services expose few
 methods which might be helpful for server administration.  Use the
-:func:`dir` function to introspect them.  The three other services should
-not be used directly: they are in the private namespace, starting with
-``_`` because their methods are wrapped and  exposed on the :class:`Client`
-object itself.  Please refer to `the Odoo documentation`_ for more details.
+:func:`dir` function to introspect them.  The :attr:``~Client._object``
+service should not be used directly because its methods are wrapped and
+exposed on the :class:`Client` object itself.
+The two last services are deprecated and removed in recent versions of Odoo.
+Please refer to `the Odoo documentation`_ for more details.
 
 
 .. attribute:: Client.db
@@ -200,6 +211,8 @@ object itself.  Please refer to `the Odoo documentation`_ for more details.
 
    Expose the ``report`` :class:`Service`.
 
+   Removed in Odoo 11.
+
 .. attribute:: Client._wizard
 
    Expose the ``wizard`` :class:`Service`.
@@ -211,7 +224,7 @@ object itself.  Please refer to `the Odoo documentation`_ for more details.
    :undoc-members:
 
 .. _the Odoo documentation:
-.. _the Odoo XML-RPC API: http://doc.openerp.com/v6.1/developer/12_api.html#api
+.. _the Odoo API: http://doc.odoo.com/v6.1/developer/12_api.html#api
 
 
 Manage addons
@@ -233,7 +246,7 @@ Python script or interactively in a Python session.
    It is not recommended to install or upgrade modules in offline mode when
    any web server is still running: the operation will not be signaled to
    other processes.  This restriction does not apply when connected through
-   XML-RPC.
+   XML-RPC or JSON-RPC.
 
 
 .. _model-and-records:
@@ -264,6 +277,12 @@ the same :class:`Model`.
    ..
       .. method:: browse(domain, context=None)
    .. automethod:: browse(domain, offset=0, limit=None, order=None, context=None)
+
+   .. note::
+
+      To enable the unsafe behavior (ERPpeek <= 1.7) of ``model.browse([])`` (i.e.
+      return all records), this class attribute can be set:
+      ``Model._browse_compat = True``.
 
    .. automethod:: get(domain, context=None)
 
